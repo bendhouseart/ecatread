@@ -1,7 +1,7 @@
 import unittest
 import os
 from dotenv import load_dotenv, find_dotenv
-from thisbytes import get_ecat_bytes, collect_specific_bytes
+from thisbytes import get_ecat_bytes, collect_specific_bytes, ecat_header_maps
 
 # load a test ecat file (this really should live at a url somewhere)
 load_dotenv(find_dotenv())
@@ -21,4 +21,3 @@ class MyTestCase(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-    test_var = MyTestCase().test_locate_main_header()

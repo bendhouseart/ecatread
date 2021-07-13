@@ -1,16 +1,14 @@
-# This is a sample Python script.
+import os
+from dotenv import load_dotenv, find_dotenv
+from thisbytes import get_ecat_bytes, collect_specific_bytes, ecat_header_maps
 
-# Press ⌃R to execute it or replace it with your code.
-# Press Double ⇧ to search everywhere for classes, files, tool windows, actions, and settings.
-
-
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press ⌘F8 to toggle the breakpoint.
-
+# load a test ecat file (this really should live at a url somewhere)
+load_dotenv(find_dotenv())
+ecat_test_file = os.environ.get("TEST_ECAT_PATH")
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    print_hi('PyCharm')
+    file_bytes = get_ecat_bytes(ecat_test_file)
 
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+    header_bytes = collect_specific_bytes(file_bytes, 0, 512)
+    print('collected')

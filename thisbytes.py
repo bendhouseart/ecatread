@@ -31,8 +31,7 @@ def collect_specific_bytes(bytes_object, start_position, width, relative_to=0):
     :return: the bytes starting at position
     """
     # navigate to byte position
-    bytes_object.seek(start_position, relative_to)
-    content = bytes_object.read(width)
+    content = bytes_object[start_position: start_position + width]
     return {"content": content, "new_position": start_position + width}
 
 
