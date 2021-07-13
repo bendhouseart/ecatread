@@ -145,7 +145,6 @@ if __name__ == "__main__":
                 something_to_string = int.from_bytes(something_filtered, 'big')
             elif 'Real' in data_type:
                 number_of_fs = int(byte_width/4)
-
                 something_to_real = struct.unpack('>' + number_of_fs*'f', something)
                 if len(something_to_real) > 1:
                     something_to_string = list(something_to_real)
