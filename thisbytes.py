@@ -5,6 +5,7 @@ from os import path
 from os.path import join
 import pathlib
 import re
+import numpy
 
 
 parent_dir = pathlib.Path(__file__).parent.resolve()
@@ -154,4 +155,13 @@ if __name__ == "__main__":
             print(byte_position, data_type, variable_name, something, something_filtered, something_to_string)
             read_head_position = byte_position + byte_width
 
+        print("let's read some stuff!")
+        next_block = read_bytes(
+            path_to_bytes=ecat_test_file,
+            byte_start=read_head_position,
+            byte_stop=read_head_position + 512)
+        print("the above should be an array of some sort")
+
+        read_that_byte_array = numpy.frombuffer(next_block, dtype=numpy.dtype('>i4'), count=-1)
+        print("READ!")
 
