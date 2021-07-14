@@ -45,7 +45,7 @@ def get_ecat_bytes(path_to_ecat: str):
     return ecat_bytes
 
 
-def read_bytes(path_to_bytes: str, byte_start: int, byte_stop: int, byte_type='utf-8'):
+def read_bytes(path_to_bytes: str, byte_start: int, byte_stop: int = -1, byte_type='utf-8'):
     if not os.path.isfile(path_to_bytes):
         raise Exception(f"{path_to_bytes} is not a valid file.")
 
@@ -155,13 +155,24 @@ if __name__ == "__main__":
             print(byte_position, data_type, variable_name, something, something_filtered, something_to_string)
             read_head_position = byte_position + byte_width
 
-        print("let's read some stuff!")
         next_block = read_bytes(
             path_to_bytes=ecat_test_file,
             byte_start=read_head_position,
             byte_stop=read_head_position + 512)
-        print("the above should be an array of some sort")
 
         read_that_byte_array = numpy.frombuffer(next_block, dtype=numpy.dtype('>i4'), count=-1)
-        print("READ!")
+        # reshape 1d array into 2d
+        reshaped = numpy.transpose(numpy.reshape(read_that_byte_array, (-1, 4)))
+        # chop of rows after 32
+        directory = reshaped[:, 0:32]
+        # get rid of zero columns
+        columns_to_remove = []
+        for index, column in enumerate(directory.T):
+            if sum(column) == 0:
+                columns_to_remove.append(index)
+        directory = numpy.delete(directory, columns_to_remove, axis=1)
 
+        # sort the directory contents as they're sometimes out of order
+        sorted_directory = directory[ :, directory[0].argsort()]
+
+        print("index found")
