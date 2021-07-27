@@ -175,6 +175,23 @@ if __name__ == "__main__":
         main_header_from_func, read_to = get_header_data(ecat_main_header, ecat_test_file)
         # end collect main header
 
+        """
+        Some notes about the file directory/sorted directory:
+        
+        The first or 0th column of the file directory correspond to the nature of the directory itself:
+        row 0: ??? No idea, some integer
+        row 1: Byte position of this table/directory
+        row 2: not sure in testing it seems to be 0 most times..
+        row 3: The number of frames/additional columns in the file. If the number of columns of this array
+        is n, it would contain n-1 frames. 
+        
+        The values in sorted_directory correspond to the following for all columns except the first column
+        row 0: Not sure, but we sort on this, perhaps it's the frame start time
+        row 1: the start byte block position of the fram data
+        row 2: end byte block position of the frame data
+        row 3: ??? Number of frames contained in w/ in the byte blocks between row 1 and 2?
+        """
+
         # Collecting File Directory/Index
         next_block = read_bytes(
             path_to_bytes=ecat_test_file,
@@ -195,25 +212,6 @@ if __name__ == "__main__":
 
         # sort the directory contents as they're sometimes out of order
         sorted_directory = directory[:, directory[0].argsort()]
-
-        """
-        Some notes about the file directory/sorted directory:
-        
-        The first or 0th column of the file directory correspond to the nature of the directory itself:
-        row 0: ??? No idea, some integer
-        row 1: Byte position of this table/directory
-        row 2: not sure in testing it seems to be 0 most times..
-        row 3: The number of frames/additional columns in the file. If the number of columns of this array
-        is n, it would contain n-1 frames. 
-        
-        The values in sorted_directory correspond to the following for all columns except the first column
-        row 0: Not sure, but we sort on this, perhaps it's the frame start time
-        row 1: the start byte block position of the fram data
-        row 2: end byte block position of the frame data
-        row 3: ??? Number of frames contained in w/ in the byte blocks between row 1 and 2?
-        """
-
-
         print("index found")
 
         # determine subheader type by checking main header
@@ -264,12 +262,12 @@ if __name__ == "__main__":
         subheader_map = subheader_types.get(subheader_type_number)
 
         if not subheader_map:
-            raise Exception("Unsupported data type for ")
+            raise Exception(f"Unsupported data type: {subheader_type_number}")
 
         # TODO Collect Subheaders and Pixel Data
         # collect subheaders
         subheaders = []
-        for i in range(len(sorted_directory) - 1):
+        for i in range(len(sorted_directory.T) - 1):
             frame_number = i + 1
             print(f"Reading subheader from frame {i}")
 
@@ -278,8 +276,32 @@ if __name__ == "__main__":
             frame_start = frame_info[1]
             frame_stop = frame_info[2]
 
-            frame_byte_position = 512*(frame_start - 1)  # sure why not
-
+            frame_start_byte_position = 512*(frame_start - 1) # sure why not
             # read subheader
-            subheader, byte_position = get_header_data(subheader_map, ecat_test_file, byte_offset=frame_byte_position)
+            subheader, byte_position = get_header_data(subheader_map,
+                                                       ecat_test_file,
+                                                       byte_offset=frame_start_byte_position)
+
+            # collect pixel data from file
+            pixel_data = read_bytes(path_to_bytes=ecat_test_file,
+                                    byte_start=512*frame_start,
+                                    byte_stop=512*(frame_stop))
+
+            # calculate size of matrix for pixel data, may vary depending on image type (polar, 3d, etc.)
+            if subheader_type_number == 7:
+                image_size = [subheader['X_DIMENSION'], subheader['Y_DIMENSION'], subheader['Z_DIMENSION']]
+                # read it into a one dimensional matrix
+                pixel_data_matrix = numpy.frombuffer(pixel_data, dtype=numpy.dtype('>i2'), count=image_size[0]*image_size[1]*image_size[2])
+                # reshape 1d matrix into 2d
+                reshaped_pixel_data_matrix = numpy.reshape(pixel_data_matrix,
+                                                           (image_size[0]*image_size[1], image_size[2]),
+                                                           order='F'
+                                                           )
+            else:
+                raise Exception(f"Unable to determine frame image size, unsupported image type {subheader_type_number}")
+
+            subheader['pixel_data'] = reshaped_pixel_data_matrix
+
             subheaders.append(subheader)
+            print(byte_position)
+        print("DONE")
