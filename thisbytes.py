@@ -269,11 +269,17 @@ if __name__ == "__main__":
         # TODO Collect Subheaders and Pixel Data
         # collect subheaders
         subheaders = []
-        for i in len(sorted_directory) - 1:
+        for i in range(len(sorted_directory) - 1):
             frame_number = i + 1
             print(f"Reading subheader from frame {i}")
-            # move to subheader in file
+
+            # collect frame info/column
+            frame_info = sorted_directory[:, i + 1]
+            frame_start = frame_info[1]
+            frame_stop = frame_info[2]
+
+            frame_byte_position = 512*(frame_start - 1)  # sure why not
 
             # read subheader
-            subheader, byte_position = get_header_data(subheader_map, ecat_test_file, 1024 + 512 * (i - 1))
+            subheader, byte_position = get_header_data(subheader_map, ecat_test_file, byte_offset=frame_byte_position)
             subheaders.append(subheader)
