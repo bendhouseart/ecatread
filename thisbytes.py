@@ -97,7 +97,30 @@ def get_header_data(header_data_map: dict = {}, ecat_file: str = '', byte_offset
     """
     Collects the header data from an ecat file, by default starts at byte position 0 (aka byte offset)
     for any header that is not the main header this offset will need to be provided
-    :param header_data_map: The dictionary mapping of header data
+    :param header_data_map: The dictionary mapping of header data this dict must have following form:
+    "ecat72_mainheader": [
+      {
+        "byte": 0,
+        "variable_name": "MAGIC_NUMBER",
+        "type": "Character*14",
+        "comment": "UNIX file type identification number (NOT PART OF THE MATRIX HEADER DATA)"
+      },
+      {
+        "byte": 14,
+        "variable_name": "ORIGINAL_FILE_NAME",
+        "type": "Character*32",
+        "comment": "Scan file’s creation name"
+      },
+      {
+        "byte": 46,
+        "variable_name": "SW_VERSION",
+        "type": "Integer*2",
+        "comment": "Software version number"
+      },
+      .
+      .
+      .
+     ]
     :param ecat_file: the path to the ecat file that is being read
     :param byte_offset: position to start reading bytes at, the data in the header_data_map is relative
     to this value. E.g. the main header lies at byte 0 of the ecat_file while, the subheader for frame n
@@ -110,7 +133,7 @@ def get_header_data(header_data_map: dict = {}, ecat_file: str = '', byte_offset
         byte_position, data_type, variable_name = values['byte'], values['type'], values['variable_name']
         byte_width = get_buffer_size(data_type, variable_name)
         relative_byte_position = byte_position + byte_offset
-        something = read_bytes(ecat_test_file, relative_byte_position, byte_width)
+        something = read_bytes(ecat_file, relative_byte_position, byte_width)
         something_filtered = bytes(filter(None, something))
         if 'Character' in data_type:
             something_to_string = str(something_filtered, 'UTF-8')
@@ -124,7 +147,7 @@ def get_header_data(header_data_map: dict = {}, ecat_file: str = '', byte_offset
             else:
                 something_to_string = something_to_real[0]
 
-        print(byte_position, data_type, variable_name, something, something_filtered, something_to_string)
+        # print(byte_position, data_type, variable_name, something, something_filtered, something_to_string)
         header[variable_name] = something_to_string
         read_head_position = relative_byte_position + byte_width
 
@@ -141,7 +164,7 @@ def read_ecat_7(ecat_file: str, calibrated: bool = False):
     """
     # use ecat header 72 to collect bytes from ecat file
     ecat_main_header = ecat_header_maps['ecat_headers']['ecat72_mainheader']
-    main_header, read_to = get_header_data(ecat_main_header, ecat_test_file)
+    main_header, read_to = get_header_data(ecat_main_header, ecat_file)
     # end collect main header
 
     """
@@ -163,7 +186,7 @@ def read_ecat_7(ecat_file: str, calibrated: bool = False):
 
     # Collecting File Directory/Index
     next_block = read_bytes(
-        path_to_bytes=ecat_test_file,
+        path_to_bytes=ecat_file,
         byte_start=read_to,
         byte_stop=read_to + 512)
 
@@ -246,13 +269,13 @@ def read_ecat_7(ecat_file: str, calibrated: bool = False):
         frame_start_byte_position = 512 * (frame_start - 1)  # sure why not
         # read subheader
         subheader, byte_position = get_header_data(subheader_map,
-                                                   ecat_test_file,
+                                                   ecat_file,
                                                    byte_offset=frame_start_byte_position)
 
         # collect pixel data from file
-        pixel_data = read_bytes(path_to_bytes=ecat_test_file,
+        pixel_data = read_bytes(path_to_bytes=ecat_file,
                                 byte_start=512 * frame_start,
-                                byte_stop=512 * (frame_stop))
+                                byte_stop=512 * frame_stop)
 
         # calculate size of matrix for pixel data, may vary depending on image type (polar, 3d, etc.)
         if subheader_type_number == 7:
@@ -291,7 +314,12 @@ def read_ecat_7(ecat_file: str, calibrated: bool = False):
 
         subheaders.append(subheader)
 
-    return main_header, subheaders, data
+    # return 4d array instead of list of 3d arrays
+    pixel_data_matrix_4d = numpy.zeros(tuple(image_size + [len(data)]), dtype=numpy.dtype(pixel_data_type))
+    for index, frame in enumerate(data):
+        pixel_data_matrix_4d[:, :, :, index] = frame
+
+    return main_header, subheaders, pixel_data_matrix_4d
 
 
 if __name__ == "__main__":
